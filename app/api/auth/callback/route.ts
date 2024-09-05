@@ -6,6 +6,12 @@ const clientSecret = process.env.SLACK_CLIENT_SECRET
 const redirectUri = `${process.env.BASE_URL}/api/auth/callback`
 
 export async function GET(request: Request) {
+  console.log('Environment variables:', {
+    SLACK_CLIENT_ID: process.env.SLACK_CLIENT_ID,
+    SLACK_CLIENT_SECRET: process.env.SLACK_CLIENT_SECRET?.slice(0, 4) + '...', // Only log the first 4 characters for security
+    BASE_URL: process.env.BASE_URL,
+  })
+
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
 
@@ -26,11 +32,11 @@ export async function GET(request: Request) {
       redirect_uri: redirectUri
     })
 
-    console.log('OAuth response:', oauthResponse)
+    console.log('OAuth response:', JSON.stringify(oauthResponse, null, 2))
 
     // Store the access token securely (e.g., in a database or encrypted cookie)
     // For this example, we'll use a secure HTTP-only cookie
-    const redirectResponse = NextResponse.redirect('/')
+    const redirectResponse = NextResponse.redirect(new URL('/', process.env.BASE_URL))
     redirectResponse.cookies.set('slackAccessToken', oauthResponse.access_token as string, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -45,6 +51,9 @@ export async function GET(request: Request) {
       console.error('Error message:', error.message)
       console.error('Error stack:', error.stack)
     }
-    return NextResponse.json({ error: 'Failed to authenticate', details: error }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Failed to authenticate', 
+      details: error instanceof Error ? error.message : String(error) 
+    }, { status: 500 })
   }
 }
